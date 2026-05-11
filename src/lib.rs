@@ -11,6 +11,7 @@ pub mod memory;
 pub mod serial;
 pub mod vga_buffer;
 pub mod allocator;
+pub mod terminal;
 
 use core::panic::PanicInfo;
 

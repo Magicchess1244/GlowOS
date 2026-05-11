@@ -7,21 +7,18 @@
 use bootloader::{BootInfo, entry_point};
 use core::panic::PanicInfo;
 use os::println;
-extern crate alloc;
-use alloc::{boxed::Box, vec, vec::Vec, rc::Rc};
-use os::allocator;
 
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-
-    println!("Hello World{}", "!");
     os::init(boot_info);
+    println!("Hello user!");
+    println!("You can type help to get the list of commands");
+
 
     #[cfg(test)]
     test_main();
 
-    println!("It did not crash!");
     os::hlt_loop();
 }
 

@@ -2,6 +2,7 @@ use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
 use crate::print;
 use crate::println;
+use crate::backspace;
 use lazy_static::lazy_static;
 
 use crate::gdt;
@@ -90,6 +91,8 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
     }
 }
 
+use crate::terminal;
+
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
     use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, layouts};
     use spin::Mutex;
@@ -109,14 +112,20 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
 
     let scancode: u8 = unsafe { port.read() };
 
-    if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
-        if let Some(key) = keyboard.process_keyevent(key_event) {
-            match key {
-                DecodedKey::Unicode(character) => print!("{}", character),
-                DecodedKey::RawKey(_) => {}
+if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
+    if let Some(key) = keyboard.process_keyevent(key_event) {
+        match key {
+            DecodedKey::Unicode('\n') => { println!(); terminal::command_runner(); }
+            DecodedKey::Unicode('\x08') => { backspace!(); }
+            DecodedKey::Unicode(character) if character.is_ascii_graphic() || character == ' ' =>
+            {
+                print!("{}", character);
             }
+
+            _ => {}
         }
     }
+}
 
     unsafe {
         PICS.lock()

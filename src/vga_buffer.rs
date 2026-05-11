@@ -9,6 +9,27 @@ macro_rules! println {
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }
 
+#[macro_export]
+macro_rules! last_row {
+    () => {
+        $crate::vga_buffer::WRITER.lock().get_last_row()
+    };
+}
+
+#[macro_export]
+macro_rules! get_words {
+    () => {
+        $crate::vga_buffer::WRITER.lock().get_words()
+    };
+}
+
+#[macro_export]
+macro_rules! backspace {
+    () => {
+        $crate::vga_buffer::WRITER.lock().remove()
+    };
+}
+
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
@@ -75,6 +96,8 @@ pub struct Writer {
     buffer: &'static mut Buffer,
 }
 
+use alloc::{vec::Vec, string::String};
+
 impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
@@ -122,6 +145,60 @@ impl Writer {
                 _ => self.write_byte(0xfe),
             }
         }
+    }
+    pub fn get_last_row(&self) -> [u8; BUFFER_WIDTH] {
+        let mut row = [b' '; BUFFER_WIDTH];
+        for col in 0..BUFFER_WIDTH {
+            row[col] = self.buffer.chars[BUFFER_HEIGHT - 2][col].read().ascii_character;
+        }
+
+        row
+    }
+    pub fn get_words(&self) -> Vec<String> {
+        let row = self.get_last_row();
+
+        let len = row.iter()
+            .position(|&c| c == b'\n')
+            .unwrap_or(row.len());
+
+        let cmd = unsafe {
+            core::str::from_utf8_unchecked(&row[..len])
+        };
+
+        let mut args = Vec::new();
+        let mut current = String::new();
+        let mut in_quotes = false;
+
+        for c in cmd.chars() {
+            match c {
+                '"' => {
+                    in_quotes = !in_quotes;
+                }
+                ' ' if !in_quotes => {
+                    if !current.is_empty() {
+                        args.push(current.clone());
+                        current.clear();
+                    }
+                }
+                _ => {
+                    current.push(c);
+                }
+            }
+        }
+
+        if !current.is_empty() {
+            args.push(current);
+        }
+
+        args
+    }
+    pub fn remove(& mut self) {
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code,
+        };
+        self.buffer.chars[BUFFER_HEIGHT - 1][self.column_position].write(blank);
+        self.column_position -= 1;
     }
 }
 
