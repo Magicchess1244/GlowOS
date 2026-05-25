@@ -5,6 +5,7 @@
 #![reexport_test_harness_main = "test_main"]
 #![feature(abi_x86_interrupt)]
 
+pub mod xhci;
 pub mod pci;
 pub mod gdt;
 pub mod interrupts;
@@ -71,12 +72,12 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 use bootloader::BootInfo;
 
 pub fn init(boot_info: &'static BootInfo) {
-    interrupts::init_idt();
+    allocator::alloc_init(boot_info);
     gdt::init();
+    interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
-    allocator::alloc_init(boot_info);
-    pci::init();
+    xhci::init(boot_info)
 }
 
 pub fn hlt_loop() -> ! {

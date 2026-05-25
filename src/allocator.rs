@@ -1,5 +1,6 @@
 use fixed_size_blocks::FixedSizeBlockAllocator;
 use bootloader::BootInfo;
+use crate::memory::{MEMORY_MANAGER, MemoryKernelManager};
 
 #[global_allocator]
 static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
@@ -63,13 +64,38 @@ pub fn init_heap(
 }
 
 pub fn alloc_init(boot_info: &'static BootInfo){
-    use crate::memory::{self, BootInfoFrameAllocator};
+    use crate::memory::{self, BootInfoFrameAllocator, BitmapFrameAllocator};
+    use crate::xhci::XhciDriver;
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    let mut mapper = memory::init(phys_mem_offset);
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
 
     init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+
+    let total_frames = 262144; 
+    let bitmap_size_bytes = total_frames / 8; // 32 KiB
+
+    let bitmap_frame = frame_allocator.allocate_frame().expect("Failed to allocate frame for bitmap tracking");
+    
+    let bitmap_vaddr = phys_mem_offset + bitmap_frame.start_address().as_u64();
+    let bitmap_slice = unsafe {
+        core::slice::from_raw_parts_mut(bitmap_vaddr.as_mut_ptr::<u8>(), bitmap_size_bytes)
+    };
+
+    let mut dma_allocator = unsafe { 
+        BitmapFrameAllocator::new(bitmap_slice, total_frames) 
+    };
+    
+    dma_allocator.fill_from_boot_allocator(&frame_allocator);
+
+    unsafe {
+        MEMORY_MANAGER = Some(MemoryKernelManager {
+            mapper,
+            dma_allocator,
+            next_free_dma_vaddr: VirtAddr::new(0xFFFF_A000_0000_0000),
+        });
+    }
 }
 
 pub struct Locked<A> {

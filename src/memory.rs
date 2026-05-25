@@ -6,9 +6,19 @@ use x86_64::{
 };
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 
-pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
+pub struct MemoryKernelManager {
+    pub mapper: OffsetPageTable<'static>,
+    pub dma_allocator: BitmapFrameAllocator,
+    pub next_free_dma_vaddr: VirtAddr,
+}
+
+pub static mut MEMORY_MANAGER: Option<MemoryKernelManager> = None;
+
+pub fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
+    unsafe {
     let level_4_table = active_level_4_table(physical_memory_offset);
     OffsetPageTable::new(level_4_table, physical_memory_offset)
+    }
 }
 
 unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut PageTable {
@@ -23,9 +33,10 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
     &mut *page_table_ptr
 }
 
-pub fn map_xhci_dma_region(
-    page: Page,
-    frame: PhysFrame,
+pub fn map_xhci_contiguous_region(
+    start_page: Page,
+    start_frame: PhysFrame,
+    count: usize,
     mapper: &mut OffsetPageTable,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
 ) {
@@ -34,10 +45,19 @@ pub fn map_xhci_dma_region(
               | PageTableFlags::NO_CACHE 
               | PageTableFlags::WRITE_THROUGH;
 
-    let map_to_result = unsafe {
-        mapper.map_to(page, frame, flags, frame_allocator)
-    };
-    map_to_result.expect("xHCI DMA mapping failed").flush();
+    for i in 0..count as u64 {
+        let current_page = start_page + i;
+        let current_frame = start_frame + i;
+
+        let map_to_result = unsafe {
+            mapper.map_to(current_page, current_frame, flags, frame_allocator)
+        };
+        
+        match map_to_result {
+            Ok(flusher) => flusher.flush(),
+            Err(e) => panic!("Failed to map contiguous xHCI region at page {:?}: {:?}", current_page, e),
+        }
+    }
 }
 
 pub fn create_example_mapping(
@@ -147,6 +167,12 @@ impl BitmapFrameAllocator {
             }
         }
         None
+    }
+
+    pub unsafe fn deallocate_contiguous(&mut self, start_frame: PhysFrame, count: usize) {
+        let start_idx = (start_frame.start_address().as_u64() / 4096) as usize;
+        
+        self.set_range(start_idx, count, false);
     }
 
     pub fn fill_from_boot_allocator(&mut self, boot_alloc: &BootInfoFrameAllocator) {

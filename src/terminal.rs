@@ -11,16 +11,21 @@ struct Command {
     description: &'static str,
 }
 
-static COMMANDS: [Command; 3] = [
+static COMMANDS: [Command; 4] = [
     Command {
-        name: "echo",
-        function: echo,
-        description: "It will print anything you put in. Args will be separated by a ' ' when displaying it"
+        name: "",
+        function: help,
+        description: "Every command must start with $."
     },
     Command {
         name: "help",
         function: help,
-        description: "It tells you the name of the commands and a short description"
+        description: "It tells you the name of the commands and a short description."
+    },
+    Command {
+        name: "echo",
+        function: echo,
+        description: "It will print anything you put in. Args will be separated by a ' ' when   displaying it"
     },
     Command {
         name: "clear",
@@ -30,18 +35,37 @@ static COMMANDS: [Command; 3] = [
 ];
 
 pub fn command_runner(){
-    let cmd = get_words!();
+    let mut cmd = get_words!();
+
 
     if cmd.is_empty() {
         return;
     }
 
-    for command in COMMANDS.iter() {
-        if command.name == cmd[0] {
-            (command.function)(cmd);
+    let first_char = cmd[0].chars().nth(0).unwrap();
+
+    if first_char != '$' {
+        return;
+    }
+
+    if cmd.len() == 1 && cmd[0].len() == 1 { 
+        println!("> Need to specify command");
+        return;
+    } 
+
+    if first_char == '$' && cmd[0].len() != 1 {
+        cmd[0] = cmd[0].chars().skip(1).collect::<String>();
+    } else {
+        cmd.remove(0);
+    };
+
+    for cmd_entry in COMMANDS.iter() {
+        if cmd_entry.name == cmd[0] {
+            (cmd_entry.function)(cmd);
             return;
         }
     }
+    println!("> Command not found");
 }
 
 fn echo(cmd: Vec<String>) {
