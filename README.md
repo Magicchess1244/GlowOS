@@ -39,10 +39,15 @@ Before running GlowOS, ensure you have the following installed on your system:
    ```
 
 3. **Run the OS:**
-   Execute the provided bash script to compile the kernel and launch it inside a QEMU virtual machine:
+   Cargo run will automaticly execute the provided bash script to compile the kernel and launch it inside a QEMU virtual machine:
    ```bash
-   chmod +x your_script_name.sh  # Replace with your actual script name if needed
-   ./your_script_name.sh
+   Cargo run
+   ```
+
+3. **Test the OS:**
+   Cargo test will automaticly execute the test that are provided:
+   ```bash
+   Cargo test
    ```
 
 ---
