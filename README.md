@@ -89,6 +89,7 @@ Before running GlowOS, ensure you have the following installed on your system:
 - [ ] Read and write to USB
 - [ ] Add a config file for visuals
 - [ ] Add userspace
+- [ ] Add queue to the vga to stop dead locks
 
 ---
 

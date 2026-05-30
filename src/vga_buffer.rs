@@ -1,4 +1,5 @@
 use alloc::{vec::Vec, string::String};
+use crate::serial_println;
 
 #[macro_export]
 macro_rules! write_byte {
@@ -304,16 +305,19 @@ impl Writer {
         }
     }
     pub fn set_color(&mut self, cmd: Vec<String>){
-        let mut text: [Color; 2] = [Color::Yellow, Color::Black];;
-        text[1] = Color::from_u8((self.color_code.0 >> 4 ) & 0xFF).unwrap_or(Color::Black);
+        let mut text: [Color; 2] = [ Color::Yellow, Color::Black
+                Color::from_u8(self.color_code.0 & 0xFF).unwrap_or(Color::Yellow), 
+                Color::from_u8((self.color_code.0 >> 4 ) & 0xFF).unwrap_or(Color::Black)
+            ];
 
         for i in 1..=2{
             match Color::from_str(cmd[i].to_lowercase().as_str()){
                 Ok(color) => {text[i - 1] = color;},
                 Err(_) => {
-                    println!("Failed to understand the text color arg: {}", cmd[i]);
-                    return;
-                }
+                    self.write_string("Failed to understand the text color arg: ");
+                    self.write_string(cmd[i].as_str());
+                    self.write_string("\n");
+                },
             }
             if cmd.len() == 2 { break;}
         }
