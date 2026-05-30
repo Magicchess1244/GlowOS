@@ -49,7 +49,7 @@ Before running GlowOS, ensure you have the following installed on your system:
 
 ## Terminal Commands
 
-> Every command must be prefixed with `$`. For example: `$help`
+> Every command must be prefixed with `$`. The space between `$` and the command is optional — both `$help` and `$ help` are valid.
 
 | Command | Description |
 |---|---|
@@ -64,13 +64,16 @@ Before running GlowOS, ensure you have the following installed on your system:
 
 ## Technical Details
 
-*(Coming soon)*
+- **Display**: Output is rendered via the **VGA buffer**, writing directly to memory-mapped video memory.
+- **Memory Management**: The kernel implements **paging** for virtual memory and **dynamic memory allocation** for heap usage at runtime.
+- **Interrupts**: Interrupt handling is set up to manage hardware and software events.
+- **USB**: USB support via **xHCI** is currently in progress.
 
 ---
 
 ## Todo
 
-- [ ] Improve and make a somewhat finished README
+- [x] Improve and make a somewhat finished README
 - [ ] Merge linked list
 - [ ] Add more commands to terminal
 - [ ] Scroll up and down → No clear line when chars reach it
