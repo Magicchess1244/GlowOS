@@ -2,6 +2,8 @@ use crate::println;
 use crate::print;
 use crate::get_words;
 use crate::clear_screen;
+use crate::set_color;
+use crate::update_color;
 use crate::xhci::XHCI_DRIVER;
 
 use alloc::{vec::Vec, string::String};
@@ -12,7 +14,7 @@ struct Command {
     description: &'static str,
 }
 
-static COMMANDS: [Command; 5] = [
+static COMMANDS: [Command; 7] = [
     Command {
         name: "",
         function: help,
@@ -32,6 +34,16 @@ static COMMANDS: [Command; 5] = [
         name: "clear",
         function: clear,
         description: "It clears the screen"
+    },
+    Command {
+        name: "set_color",
+        function: change_color,
+        description: "It changes the color of the text and or background"
+    },
+    Command {
+        name: "update_color",
+        function: update_color,
+        description: "it changes all of the text colors to be the one you are currently using"
     },
     Command {
         name: "xhci_log_register",
@@ -102,4 +114,20 @@ fn xhci_logs(_cmd: Vec<String>) {
     };
 
     xhci_driver.log_capability_registers();
+}
+
+fn change_color(cmd: Vec<String>){
+    if cmd.len() <= 1 {
+        println!("Not enough args for set_color");
+        return;
+    } else if cmd.len() > 3 {
+        println!("To many args for set_color");
+        return;
+    } 
+
+    set_color!(cmd);
+}
+
+fn update_color(_cmd: Vec<String>){
+    update_color!();
 }

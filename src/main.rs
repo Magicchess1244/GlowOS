@@ -20,7 +20,7 @@ entry_point!(kernel_main);
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
     os::init(boot_info);
     println!("Hello user!");
-    println!("You can type help to get the list of commands");
+    println!("You can type $help to get the list of commands");
 
     #[cfg(test)]
     test_main();

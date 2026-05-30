@@ -1,3 +1,5 @@
+use alloc::{vec::Vec, string::String};
+
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
@@ -37,6 +39,20 @@ macro_rules! clear_screen {
     };
 }
 
+#[macro_export]
+macro_rules! set_color {
+    ($args:expr) => {
+        $crate::vga_buffer::WRITER.lock().set_color($args);
+    };
+}
+
+#[macro_export]
+macro_rules! update_color {
+    () => {
+        $crate::vga_buffer::WRITER.lock().update_color();
+    };
+}
+
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
@@ -67,6 +83,51 @@ pub enum Color {
     Pink = 13,
     Yellow = 14,
     White = 15,
+}
+
+impl Color {
+    fn from_str(value: &str) -> Result<Self, ()> {
+        match value {
+            "black" => Ok(Color::Black),
+            "blue" => Ok(Color::Blue),
+            "green" => Ok(Color::Green),
+            "cyan" => Ok(Color::Cyan),
+            "red" => Ok(Color::Red),
+            "magenta" => Ok(Color::Magenta),
+            "brown" => Ok(Color::Brown),
+            "lightGray" => Ok(Color::LightGray),
+            "darkGray" => Ok(Color::DarkGray),
+            "lightBlue" => Ok(Color::LightBlue),
+            "lightGreen" => Ok(Color::LightGreen),
+            "lightCyan" => Ok(Color::LightCyan),
+            "lightRed" => Ok(Color::LightRed),
+            "pink" => Ok(Color::Pink),
+            "yellow" => Ok(Color::Yellow),
+            "white" => Ok(Color::White),
+            _ => Err(()),
+        }
+    }
+    pub fn from_u8(value: u8) -> Result<Self, ()> {
+        match value {
+            0 => Ok(Color::Black),
+            1 => Ok(Color::Blue),
+            2 => Ok(Color::Green),
+            3 => Ok(Color::Cyan),
+            4 => Ok(Color::Red),
+            5 => Ok(Color::Magenta),
+            6 => Ok(Color::Brown),
+            7 => Ok(Color::LightGray),
+            8 => Ok(Color::DarkGray),
+            9 => Ok(Color::LightBlue),
+            10 => Ok(Color::LightGreen),
+            11 => Ok(Color::LightCyan),
+            12 => Ok(Color::LightRed),
+            13 => Ok(Color::Pink),
+            14 => Ok(Color::Yellow),
+            15 => Ok(Color::White),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -102,8 +163,6 @@ pub struct Writer {
     color_code: ColorCode,
     buffer: &'static mut Buffer,
 }
-
-use alloc::{vec::Vec, string::String};
 
 impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
@@ -153,7 +212,7 @@ impl Writer {
         self.move_cursor();
     }
     pub fn clear_screen(&mut self){
-        for row in 0..=BUFFER_HEIGHT - 1 {
+        for row in 0..BUFFER_HEIGHT {
             self.clear_row(row);
         }
     }
@@ -211,7 +270,7 @@ impl Writer {
 
         args
     }
-    pub fn remove(& mut self) {
+    pub fn remove(&mut self) {
         if self.column_position <  1{
             return;
         }
@@ -223,7 +282,7 @@ impl Writer {
         self.buffer.chars[BUFFER_HEIGHT - 1][self.column_position].write(blank);
         self.move_cursor();
     }
-    fn move_cursor(& self) {
+    fn move_cursor(&self) {
         let position = (((BUFFER_HEIGHT - 1) * BUFFER_WIDTH) + self.column_position) as u16;
 
         unsafe {
@@ -237,6 +296,56 @@ impl Writer {
             // 2. Send Low Byte of position
             index_register.write(0x0Fu8);
             data_register.write((position & 0xFF) as u8);
+        }
+    }
+    pub fn set_color(&mut self, cmd: Vec<String>){
+        let mut text: [Color; 2] = [Color::Yellow, Color::Black];;
+        text[1] = Color::from_u8((self.color_code.0 >> 4 ) & 0xFF).unwrap_or(Color::Black);
+
+        for i in 1..=2{
+            match Color::from_str(cmd[i].to_lowercase().as_str()){
+                Ok(color) => {text[i - 1] = color;},
+                Err(_) => {
+                    println!("Failed to understand the text color arg: {}", cmd[i]);
+                    return;
+                }
+            }
+            if cmd.len() == 2 { break;}
+        }
+
+        self.color_code = ColorCode::new(text[0], text[1]);
+        if cmd.len() == 3 {self.update_bg()}
+    }
+    pub fn update_bg(&mut self) {
+        let new_bg_color = Color::from_u8(self.color_code.0 >> 4 & 0xFF).unwrap_or(Color::Black); 
+
+        for row in 0..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                let old_char = self.buffer.chars[row][col].read();
+                
+                let original_fg_color = Color::from_u8(old_char.color_code.0 & 0xFF).unwrap_or(Color::Yellow); 
+                
+                let letter = ScreenChar {
+                    ascii_character: old_char.ascii_character,
+                    color_code: ColorCode::new(original_fg_color, new_bg_color),
+                };
+                
+                self.buffer.chars[row][col].write(letter);
+            }
+        }
+    }
+    pub fn update_color(&mut self) {
+        for row in 0..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                let old_char = self.buffer.chars[row][col].read();
+                
+                let letter = ScreenChar {
+                    ascii_character: old_char.ascii_character,
+                    color_code: self.color_code,
+                };
+                
+                self.buffer.chars[row][col].write(letter);
+            }
         }
     }
 }
