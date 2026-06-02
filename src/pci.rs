@@ -64,28 +64,6 @@ fn read_bar0(bus: u8, dev: u8, func: u8) -> u64 {
     }
 }
 
-fn get_operational_base(base: u64) -> u64 {
-    let cap_length = unsafe {
-        *(base as *const u8)
-    };
-    base + cap_length as u64
-}
-
-fn save_extended_capabilities_pointer(mmio_base: usize) {
-    let hccparams1 =
-        unsafe { core::ptr::read_volatile((mmio_base + 0x10) as *const u32) };
-
-    let xecp = ((hccparams1 >> 16) & 0xFFFF) as u16;
-
-    if xecp == 0 {
-        println!("No usable xHCI extended capabilities");
-        return;
-    }
-
-    let mut ext_ptr = EXT_CAP_PTR.lock();
-    *ext_ptr = xecp * 4;
-}
-
 fn get_xhci_controler(base: u64) {
     let ext_cap_ptr = *EXT_CAP_PTR.lock(); 
     if ext_cap_ptr < 40 {

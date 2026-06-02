@@ -65,7 +65,6 @@ pub fn init_heap(
 
 pub fn alloc_init(boot_info: &'static BootInfo){
     use crate::memory::{self, BootInfoFrameAllocator, BitmapFrameAllocator};
-    use crate::xhci::XhciDriver;
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
     let mut mapper = memory::init(phys_mem_offset);

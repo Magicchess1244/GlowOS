@@ -3,6 +3,8 @@ use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 use crate::print;
 use crate::println;
 use crate::backspace;
+use crate::scroll_up;
+use crate::scroll_down;
 use lazy_static::lazy_static;
 
 use crate::gdt;
@@ -94,7 +96,7 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 use crate::terminal;
 
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, layouts};
+    use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, layouts, KeyCode};
     use spin::Mutex;
     use x86_64::instructions::port::Port;
 
@@ -114,8 +116,11 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
 
     if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
         if let Some(key) = keyboard.process_keyevent(key_event) {
-            //serial_println!("{:?}", scancode);
             match key {
+                DecodedKey::RawKey(KeyCode::PageDown) => {scroll_down!();}
+                DecodedKey::RawKey(KeyCode::ArrowDown) => {scroll_down!();}
+                DecodedKey::RawKey(KeyCode::PageUp) => {scroll_up!();}
+                DecodedKey::RawKey(KeyCode::ArrowUp) => {scroll_up!();}
                 DecodedKey::Unicode('\n') => { println!(); terminal::command_runner(); }
                 DecodedKey::Unicode('\x08') => { backspace!(); }
                 DecodedKey::Unicode(character) if character.is_ascii_graphic() || character == ' ' ||  character == '\t'=>

@@ -59,10 +59,23 @@ macro_rules! update_color {
     };
 }
 
+#[macro_export]
+macro_rules! scroll_up {
+    () => {
+        $crate::vga_buffer::WRITER.lock().scroll_up();
+    };
+}
+
+#[macro_export]
+macro_rules! scroll_down {
+    () => {
+        $crate::vga_buffer::WRITER.lock().scroll_down();
+    };
+}
+
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
-    use x86_64::instructions::interrupts;
     if let Some(mut writer) = WRITER.try_lock() {
         writer.write_fmt(args).ok();
     };
@@ -152,13 +165,13 @@ struct ScreenChar {
     color_code: ColorCode,
 }
 
+const SCROLL_BUFFER_HEIGHT: usize = 80;
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
 use volatile::Volatile;
 
 #[repr(transparent)]
-
 struct Buffer {
     chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
@@ -167,6 +180,8 @@ pub struct Writer {
     column_position: usize,
     color_code: ColorCode,
     buffer: &'static mut Buffer,
+    scroll_buffer: [[ScreenChar; BUFFER_WIDTH]; SCROLL_BUFFER_HEIGHT],
+    scroll_offset: usize,
 }
 
 impl Writer {
@@ -179,14 +194,13 @@ impl Writer {
                     self.new_line();
                 }
 
-                let row = BUFFER_HEIGHT - 1;
                 let col = self.column_position;
 
                 let color_code = self.color_code;
-                self.buffer.chars[row][col].write(ScreenChar {
+                self.scroll_buffer[SCROLL_BUFFER_HEIGHT - 1][col] = ScreenChar {
                     ascii_character: byte,
                     color_code,
-                });
+                };
                 self.column_position += 1;
                 self.move_cursor();
             }
@@ -196,13 +210,13 @@ impl Writer {
         self.write_string("    ");
     }
     fn new_line(&mut self) {
-        for row in 1..BUFFER_HEIGHT {
+        for row in 1..SCROLL_BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
-                let character = self.buffer.chars[row][col].read();
-                self.buffer.chars[row - 1][col].write(character);
+                let character = self.scroll_buffer[row][col];
+                self.scroll_buffer[row - 1][col] = character;
             }
         }
-        self.clear_row(BUFFER_HEIGHT - 1);
+        self.clear_row(SCROLL_BUFFER_HEIGHT - 1);
         self.column_position = 0;
         self.move_cursor()
     }
@@ -212,12 +226,12 @@ impl Writer {
             color_code: self.color_code,
         };
         for col in 0..BUFFER_WIDTH {
-            self.buffer.chars[row][col].write(blank);
+            self.scroll_buffer[row][col] = blank;
         }
         self.move_cursor();
     }
     pub fn clear_screen(&mut self){
-        for row in 0..BUFFER_HEIGHT {
+        for row in 0..SCROLL_BUFFER_HEIGHT {
             self.clear_row(row);
         }
     }
@@ -232,7 +246,7 @@ impl Writer {
     pub fn get_last_row(&self) -> [u8; BUFFER_WIDTH] {
         let mut row = [b' '; BUFFER_WIDTH];
         for col in 0..BUFFER_WIDTH {
-            row[col] = self.buffer.chars[BUFFER_HEIGHT - 2][col].read().ascii_character;
+            row[col] = self.scroll_buffer[SCROLL_BUFFER_HEIGHT - 2][col].ascii_character;
         }
 
         row
@@ -284,11 +298,11 @@ impl Writer {
             color_code: self.color_code,
         };
         self.column_position -= 1;
-        self.buffer.chars[BUFFER_HEIGHT - 1][self.column_position].write(blank);
+        self.scroll_buffer[SCROLL_BUFFER_HEIGHT - 1][self.column_position] = blank;
         self.move_cursor();
     }
-    fn move_cursor(&self) {
-        let position = (((BUFFER_HEIGHT - 1) * BUFFER_WIDTH) + self.column_position) as u16;
+    fn move_cursor(&mut self) {
+        let position = (((SCROLL_BUFFER_HEIGHT - 1) * BUFFER_WIDTH) + self.column_position) as u16;
 
         unsafe {
             let mut index_register = Port::<u8>::new(0x3D4);
@@ -302,6 +316,7 @@ impl Writer {
             index_register.write(0x0Fu8);
             data_register.write((position & 0xFF) as u8);
         }
+        self.redraw();
     }
     pub fn set_color(&mut self, cmd: Vec<String>){
         let mut text: [Color; 2] = [
@@ -327,9 +342,9 @@ impl Writer {
     pub fn update_bg(&mut self) {
         let new_bg_color = Color::from_u8(self.color_code.0 >> 4 & 0xFF).unwrap_or(Color::Black); 
 
-        for row in 0..BUFFER_HEIGHT {
+        for row in 0..SCROLL_BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
-                let old_char = self.buffer.chars[row][col].read();
+                let old_char = self.scroll_buffer[row][col];
                 
                 let original_fg_color = Color::from_u8(old_char.color_code.0 & 0xFF).unwrap_or(Color::Yellow); 
                 
@@ -338,21 +353,47 @@ impl Writer {
                     color_code: ColorCode::new(original_fg_color, new_bg_color),
                 };
                 
-                self.buffer.chars[row][col].write(letter);
+                self.scroll_buffer[row][col] = letter;
             }
         }
     }
     pub fn update_color(&mut self) {
-        for row in 0..BUFFER_HEIGHT {
+        for row in 0..SCROLL_BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
-                let old_char = self.buffer.chars[row][col].read();
+                let old_char = self.scroll_buffer[row][col];
                 
                 let letter = ScreenChar {
                     ascii_character: old_char.ascii_character,
                     color_code: self.color_code,
                 };
                 
-                self.buffer.chars[row][col].write(letter);
+                self.scroll_buffer[row][col] = letter;
+            }
+        }
+    }
+    pub fn scroll_up(&mut self) {
+        self.scroll_offset -= 1; 
+        self.move_cursor();
+        self.redraw();
+    }
+    pub fn scroll_down(&mut self) {
+        self.scroll_offset += 1; 
+        serial_println!("{}", self.scroll_offset);
+        self.move_cursor();
+        self.redraw();
+    }
+    fn redraw(&mut self) {
+        let top = self.scroll_offset;
+
+        for display_row in 0..BUFFER_HEIGHT {
+            let virtual_row = top + display_row;
+            for col in 0..BUFFER_WIDTH {
+                let ch = if virtual_row < SCROLL_BUFFER_HEIGHT {
+                    self.scroll_buffer[virtual_row]
+                } else {
+                    [ScreenChar { ascii_character: b' ', color_code: self.color_code }; BUFFER_WIDTH]
+                };
+                self.buffer.chars[display_row][col].write(ch[col]);
             }
         }
     }
@@ -375,6 +416,11 @@ lazy_static! {
         column_position: 0,
         color_code: ColorCode::new(Color::Yellow, Color::Black),
         buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+        scroll_buffer: [[ScreenChar {
+            ascii_character: b' ',
+            color_code: ColorCode::new(Color::Yellow, Color::Black),
+        }; BUFFER_WIDTH]; SCROLL_BUFFER_HEIGHT],
+        scroll_offset : SCROLL_BUFFER_HEIGHT - 24,
     });
 }
 
@@ -400,22 +446,10 @@ fn test_println_output() {
         let mut writer = WRITER.lock();
         writeln!(writer, "\n{}", s).expect("writeln failed");
         for (i, c) in s.chars().enumerate() {
-            let screen_char = writer.buffer.chars[BUFFER_HEIGHT - 2][i].read();
+            let screen_char = writer.scroll_buffer[SCROLL_BUFFER_HEIGHT - 2][i];
             assert_eq!(char::from(screen_char.ascii_character), c);
         }
     });
 }
 
 use x86_64::instructions::port::Port;
-
-pub fn disable_cursor() {
-    let mut index_register = Port::new(0x3D4);
-    let mut data_register = Port::new(0x3D5);
-
-    unsafe {
-        index_register.write(0x0Au8);
-        
-        let current_start: u8 = data_register.read();
-        data_register.write(current_start | 0x20);
-    }
-}
