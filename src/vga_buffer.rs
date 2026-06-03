@@ -260,6 +260,7 @@ impl Writer {
         for row in 0..SCROLL_BUFFER_HEIGHT {
             self.clear_row(row);
         }
+        self.redraw();
     }
     pub fn write_string(&mut self, s: &str) {
         for byte in s.bytes() {

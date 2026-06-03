@@ -104,3 +104,9 @@ See the `LICENSE` file for more details.
 
 Contributions, ideas, and optimizations are welcome!
 Feel free to open issues or submit pull requests.
+
+---
+
+## Current State
+
+![App Demo](assets/GlowOS.GIF)
