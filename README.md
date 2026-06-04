@@ -8,9 +8,10 @@
 2. [Terminal Commands](#terminal-commands)
 3. [Technical Details](#technical-details)
 4. [Todo](#todo)
-5. [License](#license)
-6. [Contributing](#contributing)
-7. [Current State](#current-state)
+5. [Long term goals](#long_term_goals)
+6. [License](#license)
+7. [Contributing](#contributing)
+8. [Current State](#current-state)
 
 ---
 
@@ -22,6 +23,7 @@ Before running GlowOS, ensure you have the following installed on your system:
 
 - **Rust**: You will need the Nightly toolchain and the `llvm-tools-preview` component for kernel development.
 - **QEMU**: The emulator used to run the OS.
+-**Open Virtual Machine Firmware**: An extra program for QEMU to run properly the kernel.
 - **Bash**: A Unix-like shell to execute the startup script.
 
 ### Setup Instructions
@@ -54,7 +56,6 @@ Before running GlowOS, ensure you have the following installed on your system:
 5. **Run the OS in a USB:**
    Cargo run will automaticly execute the provided bash script to compile the kernel and deploy it to the USB:
    ```bash
-   cargo bootimage
    chmod +x deploy_usb.sh
    sudo ./deploy_usb.sh
    ```
@@ -64,7 +65,7 @@ Before running GlowOS, ensure you have the following installed on your system:
 
 ## Terminal Commands
 
-> Every command must be prefixed with `$`. The space between `$` and the command is optional — both `$help` and `$ help` are valid.
+> Every command must be prefixed with `$`. The space between `$` and the command is optional — both `$help` and `$ help` are valid. And the commands are not case sensetive
 
 | Command | Description |
 |---|---|
@@ -81,7 +82,8 @@ Before running GlowOS, ensure you have the following installed on your system:
 
 ## Technical Details
 
-- **Display**: Output is rendered via the **VGA buffer**, writing directly to memory-mapped video memory.
+- **Booting**: The boot proces is done via UEFI.
+- **Display**: Output is rendered via the **frame buffer**, which is currently in progress.
 - **Memory Management**: The kernel implements **paging** for virtual memory and **dynamic memory allocation** for heap usage at runtime.
 - **Interrupts**: Interrupt handling is set up to manage hardware and software events.
 - **USB**: USB support via **xHCI** is currently in progress.
@@ -95,14 +97,24 @@ Before running GlowOS, ensure you have the following installed on your system:
 - [x] Scroll up and down → No clear line when chars reach it
 - [x] Add queue to the vga to stop dead locks -> I just don't print
 - [x] Add a history of commands and access it with arrow keys
+- [ ] Add a font renderer
 - [ ] Reset xHCI controler
 - [ ] Add multithreading
-- [ ] Merge linked list
 - [ ] Add a way to insert letters in the middle of words without erasing them
 - [ ] File system
 - [ ] Read and write to USB
 - [ ] Add a config file for visuals
+
+
+---
+
+## Long term goals
+
+- [ ] Add multithreading
+- [ ] Merge linked list
+- [ ] File system
 - [ ] Add userspace
+- [ ] Add a scheduler
 - [ ] Delete all dependecies
 
 ---
