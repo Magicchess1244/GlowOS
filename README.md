@@ -8,7 +8,7 @@
 2. [Terminal Commands](#terminal-commands)
 3. [Technical Details](#technical-details)
 4. [Todo](#todo)
-5. [Long term goals](#long_term_goals)
+5. [Long term goals](#long-term-goals)
 6. [License](#license)
 7. [Contributing](#contributing)
 8. [Current State](#current-state)
