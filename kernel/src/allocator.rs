@@ -25,7 +25,7 @@ unsafe impl GlobalAlloc for Dummy {
 }
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
-pub const HEAP_SIZE: usize = 100 * 1024; 
+pub const HEAP_SIZE: usize = 4 * 1024 * 1024; // 100 MiB
 
 use x86_64::{
     structures::paging::{
@@ -65,28 +65,38 @@ pub fn init_heap(
 
 pub fn alloc_init(boot_info: &'static BootInfo){
     use crate::memory::{self, BootInfoFrameAllocator, BitmapFrameAllocator};
+    use crate::serial_println;
+
+    serial_println!("alloc_init: start");
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option()
         .expect("Physical memory mapping was not enabled in BOOTLOADER_CONFIG"));
+    serial_println!("alloc_init: phys_mem_offset = {:?}", phys_mem_offset);
+
     let mut mapper = memory::init(phys_mem_offset);
+    serial_println!("alloc_init: mapper ok");
+
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
+    serial_println!("alloc_init: frame_allocator ok");
 
     init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 
-    let total_frames = 262144; 
+    serial_println!("alloc_init: heap ok");
+
+    let total_frames = 32768; 
     let bitmap_size_bytes = total_frames / 8; // 32 KiB
 
     let bitmap_frame = frame_allocator.allocate_frame().expect("Failed to allocate frame for bitmap tracking");
-    
+
     let bitmap_vaddr = phys_mem_offset + bitmap_frame.start_address().as_u64();
     let bitmap_slice = unsafe {
         core::slice::from_raw_parts_mut(bitmap_vaddr.as_mut_ptr::<u8>(), bitmap_size_bytes)
     };
 
-    let mut dma_allocator = unsafe { 
-        BitmapFrameAllocator::new(bitmap_slice, total_frames) 
+    let mut dma_allocator = unsafe {
+        BitmapFrameAllocator::new(bitmap_slice, total_frames)
     };
-    
+
     dma_allocator.fill_from_boot_allocator(&frame_allocator);
 
     unsafe {

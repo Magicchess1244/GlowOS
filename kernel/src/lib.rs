@@ -71,11 +71,19 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 }
 
 use bootloader_api::BootInfo;
+use bootloader_api::info::FrameBuffer;
 
 pub fn init(boot_info: &'static mut BootInfo) {
-    renderer::init(boot_info);
-    //allocator::alloc_init(boot_info);
-    //gdt::init();
+    use serial_println;
+
+    let framebuffer = boot_info.framebuffer.as_mut().unwrap() as *mut FrameBuffer;
+    serial_println!("fb ptr before: {:p}", framebuffer);
+
+    gdt::init();
+    allocator::alloc_init(boot_info);
+    
+    serial_println!("fb ptr after:  {:p}", framebuffer);
+    unsafe { renderer::init(&mut *framebuffer) };
     //interrupts::init_idt();
     //unsafe { interrupts::PICS.lock().initialize() };
     //x86_64::instructions::interrupts::enable();

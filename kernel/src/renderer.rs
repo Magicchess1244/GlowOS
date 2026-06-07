@@ -1,5 +1,5 @@
-use bootloader_api::{BootInfo, info::{FrameBufferInfo, PixelFormat}};
-use crate::serial_println;
+use bootloader_api::info::{FrameBufferInfo, PixelFormat, FrameBuffer};
+use text_renderer::FontRenderer;
 
 pub mod text_renderer;
 pub mod text_font;
@@ -10,9 +10,10 @@ pub struct Rernderer {
     info: FrameBufferInfo,
     buffer: &'static mut [u8],
     background_color: Color,
+    font_renderer: FontRenderer,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Color {
     r: u8,
     g: u8,
@@ -26,15 +27,17 @@ impl Color {
 }
 
 impl Rernderer {
-    pub fn new(boot_info: &'static mut BootInfo, background_color: Color) -> Self{
-        let fb = boot_info.framebuffer.as_mut().unwrap();
+    pub fn new(framebuffer: &'static mut FrameBuffer, background_color: Color) -> Self{
+        let fb = framebuffer;
         let info = fb.info();
         let buffer = fb.buffer_mut();
+        let font_renderer = FontRenderer::new(info.width, info.height);
 
         Self {
             info: info,
             buffer: buffer,
             background_color: background_color,
+            font_renderer: font_renderer,
         }
     }
 
@@ -68,15 +71,14 @@ impl Rernderer {
     }
 }
 
-pub fn init(boot_info: &'static mut BootInfo){
-    let msg = if boot_info.framebuffer.as_mut().is_some() { 'Y' } else { 'N' };
-    serial_println!("Got the frame buffer(Y/N): {}", msg);
-
+pub fn init(framebuffer: &'static mut FrameBuffer){
     let bg_color = Color::new(0,0,0);
 
-    unsafe {RENDERER = Some(Rernderer::new(boot_info, bg_color))}; 
+    unsafe {RENDERER = Some(Rernderer::new(framebuffer, bg_color))}; 
 
     #[allow(static_mut_refs)]
     let renderer = unsafe{RENDERER.as_mut().unwrap()};
     renderer.clear_screen();
+    renderer.font_renderer.test();
+    renderer.font_renderer.draw_buffer();
 }

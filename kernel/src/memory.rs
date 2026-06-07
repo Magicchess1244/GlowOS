@@ -84,32 +84,62 @@ unsafe impl FrameAllocator<Size4KiB> for EmptyFrameAllocator {
 
 pub struct BootInfoFrameAllocator {
     memory_map: &'static MemoryRegions,
-    next: usize,
+    region_idx: usize,
+    region_offset: u64,
+    pub next: usize,
 }
 
 impl BootInfoFrameAllocator {
     pub unsafe fn init(memory_map: &'static MemoryRegions) -> Self {
-        BootInfoFrameAllocator {
+        let mut alloc = BootInfoFrameAllocator {
             memory_map,
+            region_idx: 0,
+            region_offset: 0,
             next: 0,
+        };
+        alloc.advance_to_next_usable_region();
+        alloc
+    }
+
+    fn advance_to_next_usable_region(&mut self) {
+        while self.region_idx < self.memory_map.len() {
+            if self.memory_map[self.region_idx].kind == MemoryRegionKind::Usable {
+                return;
+            }
+            self.region_idx += 1;
         }
     }
 
-    fn usable_frames(&self) -> impl Iterator<Item = PhysFrame> {
+    pub fn usable_frames(&self) -> impl Iterator<Item = PhysFrame> + '_ {
         self.memory_map
             .iter()
             .filter(|r| r.kind == MemoryRegionKind::Usable)
-            .flat_map(|r| r.start..r.end)
-            .step_by(4096)
+            .flat_map(|r| (r.start..r.end).step_by(4096))
             .map(|addr| PhysFrame::containing_address(PhysAddr::new(addr)))
     }
 }
 
 unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
     fn allocate_frame(&mut self) -> Option<PhysFrame> {
-        let frame = self.usable_frames().nth(self.next);
-        self.next += 1;
-        frame
+        loop {
+            if self.region_idx >= self.memory_map.len() {
+                return None;
+            }
+            let region = &self.memory_map[self.region_idx];
+            let region_size = region.end.saturating_sub(region.start);
+
+            if region.kind != MemoryRegionKind::Usable || self.region_offset >= region_size {
+                self.region_idx += 1;
+                self.region_offset = 0;
+                self.advance_to_next_usable_region();
+                continue;
+            }
+
+            let phys_addr = region.start + self.region_offset;
+            self.region_offset += 4096;
+            self.next += 1;
+            return Some(PhysFrame::containing_address(PhysAddr::new(phys_addr)));
+        }
     }
 }
 

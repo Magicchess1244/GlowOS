@@ -22,7 +22,7 @@ qemu-system-x86_64 \
   -device qemu-xhci \
   -device usb-storage,drive=stick \
   -drive if=none,id=stick,format=raw,file="$USB_IMAGE" \
-  -m 256M \
+  -m 512M \
   -serial stdio \
   -vga std \
   -display sdl
