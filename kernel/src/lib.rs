@@ -74,8 +74,6 @@ use bootloader_api::BootInfo;
 use bootloader_api::info::FrameBuffer;
 
 pub fn init(boot_info: &'static mut BootInfo) {
-    use serial_println;
-
     let framebuffer = boot_info.framebuffer.as_mut().unwrap() as *mut FrameBuffer;
 
     gdt::init();

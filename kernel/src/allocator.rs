@@ -65,23 +65,13 @@ pub fn init_heap(
 
 pub fn alloc_init(boot_info: &'static BootInfo){
     use crate::memory::{self, BootInfoFrameAllocator, BitmapFrameAllocator};
-    use crate::serial_println;
-
-    serial_println!("alloc_init: start");
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option()
         .expect("Physical memory mapping was not enabled in BOOTLOADER_CONFIG"));
-    serial_println!("alloc_init: phys_mem_offset = {:?}", phys_mem_offset);
-
     let mut mapper = memory::init(phys_mem_offset);
-    serial_println!("alloc_init: mapper ok");
-
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
-    serial_println!("alloc_init: frame_allocator ok");
 
     init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
-
-    serial_println!("alloc_init: heap ok");
 
     let total_frames = 32768; 
     let bitmap_size_bytes = total_frames / 8; // 32 KiB

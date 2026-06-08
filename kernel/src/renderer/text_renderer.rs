@@ -1,4 +1,4 @@
-use crate::renderer::{text_font::SYS_FONT, Color, RENDERER};
+use crate::renderer::{text_font::{SYS_FONT, char_to_font_index}, Color, RENDERER};
 use alloc::vec::Vec;
 use alloc::vec;
 
@@ -6,7 +6,7 @@ const CHAR_SIZE: usize = 8;
 
 #[derive(Clone, Copy)]
 struct Letter {
-    ascii_character: u8,
+    ascii_character: char,
     color: Color,
 }
 
@@ -15,6 +15,8 @@ pub struct FontRenderer {
     scale: usize,
     max_chars_x: usize,
     max_chars_y: usize,
+    x_pos: usize,
+    y_pos: usize,
 }
 
 impl FontRenderer {
@@ -25,7 +27,7 @@ impl FontRenderer {
         let max_y = (max_chars_y / CHAR_SIZE / scale) as usize;
 
         let letter = Letter {
-            ascii_character: 0,
+            ascii_character: ' ',
             color: white,
         };
         Self {
@@ -33,6 +35,8 @@ impl FontRenderer {
             scale: scale,
             max_chars_x: max_x,
             max_chars_y: max_y,
+            x_pos: 0,
+            y_pos: 0,
         }
     }
 
@@ -40,14 +44,19 @@ impl FontRenderer {
         self.buffer[row * self.max_chars_x + col]
     }
 
-    fn set(&mut self, col: usize, row: usize, letter: Letter) {
-        self.buffer[row * self.max_chars_x + col] = letter;
+    fn set(&mut self, letter: Letter) {
+        self.buffer[self.y_pos * self.max_chars_x + self.x_pos] = letter;
+        self.x_pos += 1;
+        if self.x_pos >= self.max_chars_x {
+            self.x_pos = 0;
+            self.y_pos += 1;
+        }
     }
 
     fn draw_char(&self, x_pos: usize, y_pos: usize, letter: Letter) {
         #[allow(static_mut_refs)]
         let renderer = unsafe { RENDERER.as_mut().unwrap() };
-        let bitmap: u64 = SYS_FONT[letter.ascii_character as usize];
+        let bitmap: u64 = SYS_FONT[char_to_font_index(letter.ascii_character).unwrap_or(0) as usize];
 
         for y in 0..CHAR_SIZE {
             for x in 0..CHAR_SIZE {
@@ -74,18 +83,22 @@ impl FontRenderer {
             self.draw_char(col, row, self.get(col, row));
         }
     }
-    
-    pub fn test(&mut self) {
-        let white = Color::new(255, 255, 255);
 
-        for hex in 0..SYS_FONT.len().min(self.max_chars_x * self.max_chars_y) {
-            let letter = Letter {
-                ascii_character: hex as u8,
-                color: white.clone(),
-            };
-            let col = hex % self.max_chars_x;
-            let row = (hex / self.max_chars_x) as usize; 
-            self.set(col, row, letter); 
+    fn print_char(&mut self, c: char) {
+        let a = Letter {
+            ascii_character: c,
+            color: Color::new(255, 255, 255),
+        };
+        self.set(a);
+    }
+
+    pub fn print_string(&mut self, msg: &str) {
+        for letter in msg.chars() {
+            match letter {
+                '\n' => {self.y_pos += 1; self.x_pos = 0},
+                '\t' => {self.print_string("    ")},
+                _ => {self.print_char(letter)},
+            }
         }
     }
 }

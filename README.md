@@ -60,7 +60,7 @@ Before running GlowOS, ensure you have the following installed on your system:
    chmod +x deploy_usb.sh
    sudo ./deploy_usb.sh
    ```
-
+   > Remeber to disactivate secure boot in the BIOS
 
 ---
 
@@ -78,13 +78,14 @@ Before running GlowOS, ensure you have the following installed on your system:
 | `$xhci_log` | Shows xHCI's logs. |
 | `$xhci_log_cap_register` | Shows xHCI's log capability registers. |
 | `$xhci_log_op_register` | Shows xHCI's log operational registers. |
+| `$holy_c` | Shows holy C logo. |
 
 ---
 
 ## Technical Details
 
 - **Booting**: The boot proces is done via UEFI.
-- **Display**: Output is rendered via the **frame buffer**, which is currently in progress.
+- **Display**: Output is rendered via the **frame buffer**.
 - **Memory Management**: The kernel implements **paging** for virtual memory and **dynamic memory allocation** for heap usage at runtime.
 - **Interrupts**: Interrupt handling is set up to manage hardware and software events.
 - **USB**: USB support via **xHCI** is currently in progress.
@@ -95,23 +96,22 @@ Before running GlowOS, ensure you have the following installed on your system:
 ## Todo
 
 - [x] Improve and make a somewhat finished README
-- [x] Scroll up and down → No clear line when chars reach it
 - [x] Add queue to the vga to stop dead locks -> I just don't print
-- [x] Add a history of commands and access it with arrow keys
 - [x] Add a font renderer
-- [ ] Add print functions
+- [x] Add print functions
+- [ ] Scroll up and down → No clear line when chars reach it
+- [ ] Add a history of commands and access it with arrow keys
+- [ ] Add abstraction for the print functions
 - [ ] Reset xHCI controler
-- [ ] Add multithreading
 - [ ] Add a way to insert letters in the middle of words without erasing them
-- [ ] File system
-- [ ] Read and write to USB
-- [ ] Add a config file for visuals
 
 
 ---
 
 ## Long term goals
 
+- [ ] Read and write to USB
+- [ ] Add a config file for visuals
 - [ ] Add multithreading
 - [ ] Merge linked list
 - [ ] File system
@@ -123,7 +123,7 @@ Before running GlowOS, ensure you have the following installed on your system:
 
 ## Current State
 
-![Kernel Demo](assets/GlowOS.GIF)
+![Kernel Demo](assets/GlowOS_8-6-2026.GIF)
 
 ---
 
