@@ -1,6 +1,5 @@
 use crate::renderer::{text_font::{SYS_FONT, char_to_font_index}, Color, RENDERER};
 use alloc::{vec ,vec::Vec, string::String};
-use crate::serial_println;
 
 const CHAR_SIZE: usize = 8;
 const DEFAULT_LETTER: Letter = Letter {
@@ -79,7 +78,7 @@ impl FontRenderer {
                                 if (bitmap >> bit) & 1 == 1 {
                                     letter.color
                                 } else {
-                                    DEFAULT_LETTER.color
+                                    self.background_color
                                 }});
                     }
                 }

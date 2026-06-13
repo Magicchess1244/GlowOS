@@ -5,7 +5,6 @@ use x86_64::structures::paging::{Page, PhysFrame, Mapper, Size4KiB, Translate};
 use x86_64::VirtAddr;
 use crate::memory::MEMORY_MANAGER;
 use volatile::Volatile;
-use bootloader_api::BootInfo;
 
 #[repr(C)]
 struct AllocationHeader {

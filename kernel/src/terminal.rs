@@ -1,6 +1,6 @@
 use crate::println;
 use crate::print;
-use crate::renderer::{get_renderer, text_renderer::FontRenderer};
+use crate::renderer::get_renderer;
 //use crate::get_words;
 //use crate::clear_screen;
 //use crate::set_color;
