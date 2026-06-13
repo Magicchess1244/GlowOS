@@ -60,9 +60,9 @@ fn read_bar0(bus: u8, dev: u8, func: u8) -> u64 {
     }
 }
 
-fn get_xhci_controler(base: u64) {
-
-    let hccparams1 = unsafe { read_volatile((base + 0x10) as *const u32) };
+fn get_xhci_controler(base: u64, phys_mem_offset: u64) {
+    let vbase = base + phys_mem_offset;
+    let hccparams1 = unsafe { read_volatile((vbase + 0x10) as *const u32) };
     let ext_cap_ptr = ((hccparams1 >> 16) & 0xFFFF) as u32;
 
     if ext_cap_ptr < 40 {
@@ -70,7 +70,7 @@ fn get_xhci_controler(base: u64) {
         return;
     }
 
-    let ext_cap_base = base + ((ext_cap_ptr as u64) * 4);
+    let ext_cap_base = vbase + ((ext_cap_ptr as u64) * 4);
 
     let usblegsup = unsafe { read_volatile(ext_cap_base as *const u32) };
     let bios_owned = (usblegsup & (1 << 16)) != 0;
@@ -96,7 +96,7 @@ fn get_xhci_controler(base: u64) {
     }
 }
 
-fn pci_discover() -> Option<u64> {
+fn pci_discover(phys_mem_offset: u64) -> Option<u64> {
     for bus in 0..=255 {
         for dev in 0..32 {
             for func in 0..8 {
@@ -117,7 +117,7 @@ fn pci_discover() -> Option<u64> {
                     
                     let paddr = read_bar0(bus, dev, func);
 
-                    get_xhci_controler(paddr);
+                    get_xhci_controler(paddr, phys_mem_offset);
                     
                     println!("xHCI at bus {} dev {} func {}", bus, dev, func);
                     return Some(paddr);
@@ -128,6 +128,6 @@ fn pci_discover() -> Option<u64> {
     None
 }
 
-pub fn init() -> Option<u64> {
-    pci_discover()
+pub fn init(phys_mem_offset: u64) -> Option<u64> {
+    pci_discover(phys_mem_offset)
 }

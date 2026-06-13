@@ -240,10 +240,9 @@ impl XhciDriver {
         }
     }
 }
-pub fn init(boot_info: &'static mut BootInfo){
-    if let Some(xhci_phys_addr) = pci::init() {
-        let xhci_base_vaddr = boot_info.physical_memory_offset.into_option().expect("Physical memory offset not found") + xhci_phys_addr;
-        let xhci_driver = unsafe { XhciDriver::new(xhci_base_vaddr) };
+pub fn init(xhci_base_vaddr: u64){
+    if let Some(xhci_phys_addr) = pci::init(xhci_base_vaddr) {
+        let xhci_driver = unsafe { XhciDriver::new((xhci_base_vaddr + xhci_phys_addr) as u64) };
         xhci_driver.log_capability_registers();
         xhci_driver.log_operational_registers();
 

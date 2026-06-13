@@ -60,7 +60,7 @@ impl Renderer {
         let fb = framebuffer;
         let info = fb.info();
         let buffer = fb.buffer_mut();
-        let font_renderer = FontRenderer::new(info.width, info.height);
+        let font_renderer = FontRenderer::new(info.width, info.height, background_color);
 
         Self {
             info: info,
@@ -130,12 +130,4 @@ pub fn init(framebuffer: &'static mut FrameBuffer){
     #[allow(static_mut_refs)]
     let renderer = unsafe{RENDERER.as_mut().unwrap()};
     renderer.clear_screen();
-    print!("Helo");
-    print!("Helo");
-    print!("Helo");
-    print!("Helo");
-    print!("Helo");
-    print!("Helo");
-    print!("Helo");
-    print!("Helo");
 }

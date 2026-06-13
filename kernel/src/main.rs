@@ -20,10 +20,10 @@ pub static BOOTLOADER_CONFIG: BootloaderConfig = {
 bootloader_api::entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
-    kernel::init(boot_info);
     
+ //   print_logo();
 
-    /*print_logo();
+    kernel::init(boot_info);
 
     println!("\n============ Init when correctly ===========\n");
 
@@ -32,7 +32,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     #[cfg(test)]
     test_main();
-    */
+
     kernel::hlt_loop();
 }
 

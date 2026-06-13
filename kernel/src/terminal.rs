@@ -65,7 +65,7 @@ static COMMANDS: &[Command] = &[
     },
     Command {
         name: "holy_c",
-        function: xhci_op_logs,
+        function: holy_c,
         description: "It shows xHCI's log operational registers"
     },
 ];

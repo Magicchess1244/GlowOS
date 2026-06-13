@@ -74,21 +74,15 @@ use bootloader_api::info::FrameBuffer;
 
 pub fn init(boot_info: &'static mut BootInfo) {
     let framebuffer = boot_info.framebuffer.as_mut().unwrap() as *mut FrameBuffer;
+    let xhci_base_vaddr = boot_info.physical_memory_offset.into_option().expect("Physical memory offset not found");
 
     gdt::init();
     allocator::alloc_init(boot_info);
     
     unsafe { renderer::init(&mut *framebuffer) };
     interrupts::init_idt();
-    unsafe { 
-        let mut pics = interrupts::PICS.lock();
-        pics.initialize();
-        pics.write_masks(0xFC, 0xFF);
-    };
 
-    x86_64::instructions::interrupts::enable();
-
-    //xhci::init(boot_info)
+    xhci::init(xhci_base_vaddr);
 }
 
 pub fn hlt_loop() -> ! {
